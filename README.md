@@ -4,11 +4,13 @@ This repository contains the technical artifacts for the **Results Verification 
 
 The platform supports secure result verification and controlled result release across three main consumer groups:
 
-* Candidates using USSD on feature phones
-* Schools downloading results in bulk
-* Employers verifying certificates through an API
+- Candidates using USSD on feature phones
+- Schools downloading results in bulk
+- Employers verifying certificates through an API
 
 ## Repository Structure
+
+```text
 takarda-repo/
 │
 ├── README.md
@@ -25,35 +27,47 @@ takarda-repo/
     ├── c3-employer-verification-sequence.mmd
     ├── c4-pin-purchase-sequence.mmd
     └── d1-data-model-er.mmd
+Each Mermaid `.mmd` source file has a corresponding rendered `.svg` diagram in the same directory.
 
 ## Contents
+
 ### API Specification
 
-`api/openapi.yaml` contains the OpenAPI specification for the platform's verification API, including its endpoints, request and response structures, authentication requirements, and documented error responses.
+`api/openapi.yaml` contains the OpenAPI specification for the platform's verification API, including:
+
+- API endpoints
+- Request and response structures
+- Authentication requirements
+- Error responses
+- PIN purchase and result checks
+- School bulk-download jobs
+- Certificate verification
+- Certificate amendments
+
+The specification was validated using Redocly.
 
 ### Architecture Diagrams
 
-The `diagrams/` directory contains the Mermaid source files for the platform's architecture and interaction diagrams.
+The `diagrams/` directory contains the Mermaid source files and rendered SVG diagrams for the platform's architecture and interactions.
 
 The diagrams cover:
-* System context
-* Container architecture
-* Verification service components
-* USSD result checking
-* School bulk downloads
-* Employer verification
-* PIN purchasing
-* Data model
 
-The `.mmd` files contain the Mermaid source so that the diagrams can be reviewed, edited, and rendered independently.
+- **B1 — System Context**
+- **B2 — Container Architecture**
+- **B3 — Verification Service Components**
+- **C1 — USSD Result Check**
+- **C2 — School Bulk Download**
+- **C3 — Employer Verification**
+- **C4 — PIN Purchase**
+- **D1 — Data Model**
+
+The `.mmd` files contain the Mermaid source so that the diagrams can be reviewed, edited, and rendered independently. The `.svg` files provide the rendered versions for viewing and documentation.
 
 ## Validation
-The API specification can be linted with Redocly:
+
+### OpenAPI
+
+The API specification can be validated with Redocly:
 
 ```bash
 npx @redocly/cli lint api/openapi.yaml
-
-Mermaid diagrams can be previewed in VS Code using the **Markdown Preview Mermaid Support** extension.
-
-## Purpose
-These artifacts provide the technical contract and architecture supporting the Results Verification & Release Platform. They are intended to be reviewed alongside the project's requirements and design documents.
