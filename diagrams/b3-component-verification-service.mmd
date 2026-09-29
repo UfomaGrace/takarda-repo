@@ -1,0 +1,9 @@
+graph TD
+  Request["Verifier request"] --> AuthN["Auth & credential check"]
+  AuthN -->|rejected| RejectResp["Auth error — no lookup performed"]
+  AuthN -->|accepted| Lookup["Certificate lookup"]
+  Lookup --> Overlay["Amendment overlay<br/>merges current state, 5-min bound"]
+  Overlay --> Projector["Disclosure projector<br/>strips every field not on this certificate"]
+  Projector --> Response["Valid/invalid + certified fields only"]
+  Lookup --> Logger["Audit logger — separate write path"]
+  Projector --> RateAcct["Volume/rate accounting"]

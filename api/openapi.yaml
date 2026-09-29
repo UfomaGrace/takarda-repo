@@ -1,0 +1,448 @@
+openapi: 3.0.3
+info:
+  title: Takarda Results Verification & Release Platform API
+  description: >
+    Wire-level contract for the Results Verification & Release Platform,
+    as specified in Part C. Covers PIN purchase, candidate result checks,
+    school bulk downloads, certificate verification, and amendments.
+  version: "1.0.0"
+  contact:
+    name: Takarda Ltd
+  license:
+    name: Proprietary
+
+servers:
+  - url: https://api.takarda.example/v1
+    description: Production (illustrative host)
+
+tags:
+  - name: PIN
+    description: PIN purchase and issuance operations.
+  - name: Checks
+    description: Candidate result checks using a PIN and examination number.
+  - name: Schools
+    description: School result download jobs and job-status operations.
+  - name: Verification
+    description: Certificate verification for authorised external consumers.
+  - name: Amendments
+    description: Authorised recording of certificate amendments.
+
+paths:
+  /pins:
+    post:
+      operationId: createPinPurchase
+      tags: [PIN]
+      security:
+        - ApiKeyAuth: []
+      summary: Create a PIN purchase transaction
+      description: >
+        Creates one PIN for 350000 kobo. See Part C §4 for the timeout
+        and duplicate-charge handling this endpoint sits in front of.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PinPurchaseRequest'
+      responses:
+        '201':
+          description: Payment confirmed; PIN issued.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Pin'
+        '200':
+          description: Payment status unclear after a partner timeout (FRD PP3 / Part C §4.2). Not an error; do not retry with the same card.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaymentUnclear'
+        '400':
+          description: Invalid amount or channel.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '402':
+          description: Payment declined.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /checks:
+    post:
+      operationId: checkCandidateResult
+      tags: [Checks]
+      security: []
+      summary: Redeem one PIN and look up a result
+      description: See FRD CC1-CC12 for the full trigger/response set this endpoint implements.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CheckRequest'
+      responses:
+        '200':
+          description: >
+            Request fully processed. matched=false is a legitimate outcome
+            (FRD CC4) — a well-formed request with no matching candidate,
+            not a client error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CheckResult'
+        '400':
+          description: Invalid PIN or examination number format (FRD CC5). Remaining count untouched.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Not yet released (FRD CC1), or PIN exhausted (FRD CC3 / CC6).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '503':
+          description: Result store unreachable within 5s (FRD CC10); retry shortly.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /schools/{school_id}/result-downloads:
+    post:
+      operationId: createSchoolResultDownload
+      tags: [Schools]
+      security:
+        - ApiKeyAuth: []
+      summary: Create a bulk-download job for a school's results
+      parameters:
+        - name: school_id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Identifies the requesting school.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [sitting]
+              properties:
+                sitting:
+                  type: string
+                  example: "2026-05"
+      responses:
+        '202':
+          description: Job accepted (FRD SD2).
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  job_id:
+                    type: string
+        '400':
+          description: Malformed or not-yet-held sitting (FRD SD8).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Requested before release time (FRD SD1), or school_id does not match the caller's own school (FRD SD6).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /jobs/{job_id}:
+    get:
+      operationId: getSchoolDownloadJob
+      tags: [Schools]
+      security:
+        - ApiKeyAuth: []
+      summary: Read the status of a download job
+      parameters:
+        - name: job_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Job status, and a download reference once ready.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JobStatus'
+        '404':
+          description: Unknown job.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /certificates/{ref}:
+    get:
+      operationId: verifyCertificate
+      tags: [Verification]
+      security:
+        - ApiKeyAuth: []
+      summary: Verify one certificate
+      description: >
+        Response is a certificate-scoped disclosure projection (Part B ADR-4) -
+        never the candidate's general record.
+      parameters:
+        - name: ref
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Certificate reference number.
+      responses:
+        '200':
+          description: Valid certificate; certificate-scoped fields only.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CertificateResult'
+        '401':
+          description: Missing, invalid, or revoked credential (FRD VR4, VR12) — identical response for both.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: >
+            No match — identical response whether the reference is
+            malformed, unassigned, or belongs to no one (FRD VR3),
+            so a caller can never learn whether a given reference is real.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /verifications:
+    post:
+      operationId: verifyCertificateBatch
+      tags: [Verification]
+      security:
+        - ApiKeyAuth: []
+      summary: Verify a batch of certificate references
+      description: >
+        Not HTTP-safe and not fully idempotent - each call produces audit-log
+        and rate-accounting side effects (VR6, VR9). Repeated submission of the
+        same batch is response-stable under VR7, which is a separate,
+        application-level guarantee, not an HTTP property.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [references]
+              properties:
+                references:
+                  type: array
+                  minItems: 1
+                  maxItems: 100
+                  items:
+                    type: string
+      responses:
+        '200':
+          description: One result per submitted reference (FRD VR8).
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  results:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/CertificateResult'
+        '400':
+          description: Empty batch or more than 100 references.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Missing or invalid credential.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /amendments:
+    post:
+      operationId: recordAmendment
+      tags: [Amendments]
+      security:
+        - ApiKeyAuth: []
+      summary: Record an authorised amendment
+      description: >
+        Append-only (Part B ADR-3). Never edits or deletes the record it
+        supersedes; the current record is a pointer, not a rewritten row.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AmendmentRequest'
+      responses:
+        '201':
+          description: Amendment recorded (FRD AM1).
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  amendment_id:
+                    type: string
+        '400':
+          description: Missing evidence reference (FRD AM2), invalid subject/grade, or examination_number does not exist (FRD AM9).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Submitting account lacks amendment authorisation (FRD AM3).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+      description: API credential issued to an authorised platform consumer.
+
+  schemas:
+    PinPurchaseRequest:
+      type: object
+      required: [amount, channel]
+      properties:
+        amount:
+          type: integer
+          description: Whole number of kobo. Must equal 350000 (FRD PP7).
+          example: 350000
+        channel:
+          type: string
+          enum: [web, bank, agent]
+        agent_id:
+          type: string
+          description: Required if channel is bank or agent.
+
+    Pin:
+      type: object
+      properties:
+        pin_code:
+          type: string
+        remaining_checks:
+          type: integer
+          example: 5
+        issued_at:
+          type: string
+          format: date-time
+
+    PaymentUnclear:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [unknown]
+        message:
+          type: string
+          example: "Payment status unclear. Do not retry immediately with the same card. Contact support if charged without receiving a PIN."
+
+    CheckRequest:
+      type: object
+      required: [pin, examination_number]
+      properties:
+        pin:
+          type: string
+          pattern: '^[0-9]{10}$'
+        examination_number:
+          type: string
+
+    CheckResult:
+      type: object
+      properties:
+        matched:
+          type: boolean
+        subjects:
+          type: array
+          items:
+            $ref: '#/components/schemas/SubjectGrade'
+
+    SubjectGrade:
+      type: object
+      properties:
+        subject:
+          type: string
+        grade:
+          type: string
+
+    JobStatus:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [pending, processing, ready, failed]
+        download_reference:
+          type: string
+          nullable: true
+
+    CertificateResult:
+      type: object
+      properties:
+        valid:
+          type: boolean
+        name:
+          type: string
+        sitting:
+          type: string
+        subjects:
+          type: array
+          items:
+            $ref: '#/components/schemas/SubjectGrade'
+        amended:
+          type: boolean
+        amended_date:
+          type: string
+          format: date
+          nullable: true
+
+    AmendmentRequest:
+      type: object
+      required: [examination_number, subject, new_grade, reason_code, evidence_ref]
+      properties:
+        examination_number:
+          type: string
+        subject:
+          type: string
+        new_grade:
+          type: string
+        reason_code:
+          type: string
+          enum: [remark, appeal, data_correction]
+        evidence_ref:
+          type: string
+
+    Error:
+      type: object
+      required: [code, message]
+      properties:
+        code:
+          type: string
+          example: pin_exhausted
+        message:
+          type: string

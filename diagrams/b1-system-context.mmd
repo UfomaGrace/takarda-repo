@@ -1,0 +1,23 @@
+graph TD
+  Candidate["Candidate — web / app / agent kiosk"]
+  CandidateUSSD["Candidate — USSD / SMS, feature phone"]
+  Buyer["PIN buyer — bank teller, agent, online"]
+  School["School exams officer"]
+  Employer["Employer / university verifier"]
+  Officer["Council amendments officer"]
+  Regulator["Regulator / auditor"]
+  Payment["Payment partner"]
+  Telco["Telco USSD/SMS gateway"]
+  Legacy["2009 legacy system — source, one-time"]
+  Takarda(("Takarda<br/>Results Verification & Release Platform"))
+
+  Candidate -->|checks result| Takarda
+  CandidateUSSD -->|checks result| Telco
+  Telco -->|forwards session| Takarda
+  Buyer -->|buys PIN| Takarda
+  Takarda -->|charges card| Payment
+  School -->|downloads result list| Takarda
+  Employer -->|verifies certificate| Takarda
+  Officer -->|records amendment| Takarda
+  Regulator -->|audits history| Takarda
+  Legacy -.->|one-time migration| Takarda

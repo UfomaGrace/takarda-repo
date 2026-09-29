@@ -1,0 +1,68 @@
+erDiagram
+    CANDIDATE ||--o{ CANDIDATE_SITTING : "sits exams as"
+    SCHOOL ||--o{ CANDIDATE_SITTING : "entered by"
+    SITTING ||--o{ CANDIDATE_SITTING : "for sitting"
+    CANDIDATE_SITTING ||--o{ RESULT_VERSION : "has result history"
+    SUBJECT ||--o{ RESULT_VERSION : "grade in"
+    AMENDMENT ||--|| RESULT_VERSION : "produces exactly one"
+    OFFICER ||--o{ AMENDMENT : "authorises"
+    CANDIDATE_SITTING ||--o{ CERTIFICATE : "issued for"
+    CERTIFICATE ||--o{ CERTIFICATE_RESULT_LINE : "certifies"
+    RESULT_VERSION ||--o{ CERTIFICATE_RESULT_LINE : "pinned by"
+
+    CANDIDATE {
+        bigint candidate_id PK
+        string full_name
+        date date_of_birth
+    }
+    CANDIDATE_SITTING {
+        bigint candidate_sitting_id PK
+        bigint candidate_id FK
+        bigint sitting_id FK
+        bigint school_id FK
+        string examination_number UK
+    }
+    SCHOOL {
+        bigint school_id PK
+        string name
+        string state
+    }
+    SITTING {
+        bigint sitting_id PK
+        int year
+        string session
+        timestamptz release_at
+    }
+    SUBJECT {
+        bigint subject_id PK
+        string name
+    }
+    RESULT_VERSION {
+        bigint result_version_id PK
+        bigint candidate_sitting_id FK
+        bigint subject_id FK
+        string grade
+        int version_seq
+        timestamptz effective_from
+        timestamptz superseded_at
+        string source
+        bigint amendment_id FK
+    }
+    AMENDMENT {
+        bigint amendment_id PK
+        bigint officer_id FK
+        string reason_code
+        string evidence_ref
+        timestamptz approved_at
+    }
+    CERTIFICATE {
+        bigint certificate_id PK
+        string certificate_number UK
+        bigint candidate_sitting_id FK
+        timestamptz issued_at
+    }
+    CERTIFICATE_RESULT_LINE {
+        bigint certificate_id FK
+        bigint subject_id FK
+        bigint result_version_id FK
+    }

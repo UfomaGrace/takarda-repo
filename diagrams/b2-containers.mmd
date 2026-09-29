@@ -1,0 +1,37 @@
+graph TD
+  subgraph Client channels
+    Web["Candidate web/app client"]
+    Kiosk["Agent kiosk client"]
+    USSDApp["USSD/SMS gateway adapter"]
+    SchoolPortal["School portal client"]
+    VerifierPortal["Verifier portal / API client"]
+  end
+  subgraph Takarda platform
+    PINSvc["PIN & Payment Service"]
+    ReleaseSvc["Result Release Service"]
+    Cache[["Cache / edge layer"]]
+    VerifySvc["Verification Service"]
+    SchoolSvc["School Download Service"]
+    AmendSvc["Amendment Service"]
+    Recon["Reconciliation job"]
+    Archive[("Archive store — current + 18yr history")]
+    AuditLog[("Audit log store")]
+  end
+  PaymentPartner["Payment partner"]
+
+  Web --> Cache
+  Kiosk --> PINSvc
+  USSDApp --> Cache
+  SchoolPortal --> SchoolSvc
+  VerifierPortal --> VerifySvc
+  PINSvc --> Archive
+  PINSvc --> PaymentPartner
+  Recon --> PaymentPartner
+  Recon --> PINSvc
+  ReleaseSvc --> Archive
+  ReleaseSvc --> Cache
+  Cache --> Archive
+  VerifySvc --> Archive
+  VerifySvc --> AuditLog
+  SchoolSvc --> Archive
+  AmendSvc --> Archive

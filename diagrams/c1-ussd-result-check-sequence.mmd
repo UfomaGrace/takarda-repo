@@ -1,0 +1,19 @@
+sequenceDiagram
+    participant C as Candidate
+    participant T as Telco Gateway
+    participant A as USSD Adapter
+    participant R as Result Service
+    C->>T: Dial USSD code
+    T->>A: Start session (existing persistent link)
+    A-->>T: Prompt for PIN
+    T-->>C: Enter PIN
+    C->>T: PIN
+    T->>A: PIN
+    A-->>T: Prompt for exam number
+    T-->>C: Enter exam number
+    C->>T: Exam number
+    T->>A: Check request
+    A->>R: Redeem PIN + lookup result
+    R-->>A: Result + usage decision
+    A-->>T: Short result message
+    T-->>C: Result

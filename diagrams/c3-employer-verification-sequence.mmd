@@ -1,0 +1,13 @@
+sequenceDiagram
+    participant V as Employer System
+    participant C as Verification Service
+    participant D as Archive Store
+    participant L as Audit Log
+    V->>C: POST /v1/verifications (up to 100 refs, one HTTP/2 connection)
+    par Each reference, independent stream
+        C->>D: Lookup certificate
+        D-->>C: Current state + amendment overlay
+        C->>C: Apply disclosure projection
+        C->>L: Record verification event
+    end
+    C-->>V: 200, one result per reference

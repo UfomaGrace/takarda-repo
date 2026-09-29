@@ -1,0 +1,28 @@
+sequenceDiagram
+    participant C as Client
+    participant P as PIN Service
+    participant T as Transaction Store
+    participant Pay as Payment Partner
+    C->>P: POST /v1/pins
+    P->>T: Create internal_reference, state=pending
+    P->>Pay: Charge 350000 kobo + internal_reference
+    alt Confirmed
+        Pay-->>P: Success + partner_reference
+        P->>T: state=charged
+        P->>T: Issue one PIN
+        P-->>C: 201 + PIN
+    else Declined
+        Pay-->>P: Declined
+        P->>T: state=failed
+        P-->>C: 402 declined
+    else Timeout
+        P->>T: state=unknown
+        P->>Pay: Query status by internal_reference
+        alt Now confirmed
+            Pay-->>P: Charged
+            P->>T: Issue one PIN only if none exists yet
+            P-->>C: Confirmed + PIN
+        else Still unknown
+            P-->>C: Status unclear — do not retry with same card
+        end
+    end

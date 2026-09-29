@@ -1,0 +1,11 @@
+sequenceDiagram
+    participant S as School Portal
+    participant J as Download Service
+    participant D as Archive Store
+    S->>J: POST result-downloads
+    J-->>S: 202 Accepted + job_id
+    J->>D: Read school's results (async)
+    D-->>J: Rows
+    J->>J: Generate timestamped file
+    S->>J: GET /v1/jobs/{job_id}
+    J-->>S: 200 ready + file reference
