@@ -51,7 +51,6 @@ The specification was validated using Redocly.
 The `diagrams/` directory contains the Mermaid source files and rendered SVG diagrams for the platform's architecture and interactions.
 
 The diagrams cover:
-
 - **B1 — System Context**
 - **B2 — Container Architecture**
 - **B3 — Verification Service Components**
@@ -71,3 +70,16 @@ The API specification can be validated with Redocly:
 
 ```bash
 npx @redocly/cli lint api/openapi.yaml
+
+## Mermaid
+Individual diagrams can be rendered and syntax-checked with Mermaid CLI:
+
+```bash
+npx @mermaid-js/mermaid-cli -i diagrams/b1-system-context.mmd -o diagrams/b1-system-context.svg
+
+The same command pattern can be used for the other .mmd files.
+Mermaid diagrams can also be previewed in VS Code using a Mermaid preview extension.
+
+## Purpose
+These artifacts provide the technical contract and architecture supporting the Results Verification & Release Platform.
+They are intended to be reviewed alongside the project's requirements and design documents.
